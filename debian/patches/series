@@ -1,1 +1,3 @@
-disable-cflags-rewrite.diff
+
+use-debian-googletest.diff
+remove-shields-from-markdown.diff

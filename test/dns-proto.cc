@@ -1,3 +1,28 @@
+/* MIT License
+ *
+ * Copyright (c) The c-ares project and its contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * SPDX-License-Identifier: MIT
+ */
 
 // Include ares internal file for DNS protocol details
 #include "ares_setup.h"
@@ -16,7 +41,7 @@ std::string HexDump(std::vector<byte> data) {
   std::stringstream ss;
   for (size_t ii = 0; ii < data.size();  ii++) {
     char buffer[2 + 1];
-    sprintf(buffer, "%02x", data[ii]);
+    snprintf(buffer, sizeof(buffer), "%02x", data[ii]);
     ss << buffer;
   }
   return ss.str();
@@ -159,17 +184,17 @@ std::string AddressToString(const void* vaddr, int len) {
   std::stringstream ss;
   if (len == 4) {
     char buffer[4*4 + 3 + 1];
-    sprintf(buffer, "%u.%u.%u.%u",
-            (unsigned char)addr[0],
-            (unsigned char)addr[1],
-            (unsigned char)addr[2],
-            (unsigned char)addr[3]);
+    snprintf(buffer, sizeof(buffer), "%u.%u.%u.%u",
+             (unsigned char)addr[0],
+             (unsigned char)addr[1],
+             (unsigned char)addr[2],
+             (unsigned char)addr[3]);
     ss << buffer;
   } else if (len == 16) {
     for (int ii = 0; ii < 16;  ii+=2) {
       if (ii > 0) ss << ':';
       char buffer[4 + 1];
-      sprintf(buffer, "%02x%02x", (unsigned char)addr[ii], (unsigned char)addr[ii+1]);
+      snprintf(buffer, sizeof(buffer), "%02x%02x", (unsigned char)addr[ii], (unsigned char)addr[ii+1]);
       ss << buffer;
     }
   } else {
@@ -180,7 +205,7 @@ std::string AddressToString(const void* vaddr, int len) {
 
 std::string PacketToString(const std::vector<byte>& packet) {
   const byte* data = packet.data();
-  int len = packet.size();
+  int len = (int)packet.size();
   std::stringstream ss;
   if (len < NS_HFIXEDSZ) {
     ss << "(too short, len " << len << ")";
@@ -236,7 +261,7 @@ std::string QuestionToString(const std::vector<byte>& packet,
 
   char *name = nullptr;
   long enclen;
-  int rc = ares_expand_name(*data, packet.data(), packet.size(), &name, &enclen);
+  int rc = ares_expand_name(*data, packet.data(), (int)packet.size(), &name, &enclen);
   if (rc != ARES_SUCCESS) {
     ss << "(error from ares_expand_name)";
     return ss.str();
@@ -245,7 +270,7 @@ std::string QuestionToString(const std::vector<byte>& packet,
     ss << "(error, encoded name len " << enclen << "bigger than remaining data " << *len << " bytes)";
     return ss.str();
   }
-  *len -= enclen;
+  *len -= (int)enclen;
   *data += enclen;
   ss << "'" << name << "' ";
   ares_free_string(name);
@@ -272,7 +297,7 @@ std::string RRToString(const std::vector<byte>& packet,
 
   char *name = nullptr;
   long enclen;
-  int rc = ares_expand_name(*data, packet.data(), packet.size(), &name, &enclen);
+  int rc = ares_expand_name(*data, packet.data(), (int)packet.size(), &name, &enclen);
   if (rc != ARES_SUCCESS) {
     ss << "(error from ares_expand_name)";
     return ss.str();
@@ -281,7 +306,7 @@ std::string RRToString(const std::vector<byte>& packet,
     ss << "(error, encoded name len " << enclen << "bigger than remaining data " << *len << " bytes)";
     return ss.str();
   }
-  *len -= enclen;
+  *len -= (int)enclen;
   *data += enclen;
   ss << "'" << name << "' ";
   ares_free_string(name);
@@ -330,7 +355,7 @@ std::string RRToString(const std::vector<byte>& packet,
     case T_CNAME:
     case T_NS:
     case T_PTR: {
-      int rc = ares_expand_name(*data, packet.data(), packet.size(), &name, &enclen);
+      int rc = ares_expand_name(*data, packet.data(), (int)packet.size(), &name, &enclen);
       if (rc != ARES_SUCCESS) {
         ss << "(error from ares_expand_name)";
         break;
@@ -341,7 +366,7 @@ std::string RRToString(const std::vector<byte>& packet,
     }
     case T_MX:
       if (rdatalen > 2) {
-        int rc = ares_expand_name(*data + 2, packet.data(), packet.size(), &name, &enclen);
+        int rc = ares_expand_name(*data + 2, packet.data(), (int)packet.size(), &name, &enclen);
         if (rc != ARES_SUCCESS) {
           ss << "(error from ares_expand_name)";
           break;
@@ -359,7 +384,7 @@ std::string RRToString(const std::vector<byte>& packet,
         unsigned long weight = DNS__16BIT(p + 2);
         unsigned long port = DNS__16BIT(p + 4);
         p += 6;
-        int rc = ares_expand_name(p, packet.data(), packet.size(), &name, &enclen);
+        int rc = ares_expand_name(p, packet.data(), (int)packet.size(), &name, &enclen);
         if (rc != ARES_SUCCESS) {
           ss << "(error from ares_expand_name)";
           break;
@@ -386,7 +411,7 @@ std::string RRToString(const std::vector<byte>& packet,
     }
     case T_SOA: {
       const byte* p = *data;
-      int rc = ares_expand_name(p, packet.data(), packet.size(), &name, &enclen);
+      int rc = ares_expand_name(p, packet.data(), (int)packet.size(), &name, &enclen);
       if (rc != ARES_SUCCESS) {
         ss << "(error from ares_expand_name)";
         break;
@@ -394,7 +419,7 @@ std::string RRToString(const std::vector<byte>& packet,
       ss << " '" << name << "'";
       ares_free_string(name);
       p += enclen;
-      rc = ares_expand_name(p, packet.data(), packet.size(), &name, &enclen);
+      rc = ares_expand_name(p, packet.data(), (int)packet.size(), &name, &enclen);
       if (rc != ARES_SUCCESS) {
         ss << "(error from ares_expand_name)";
         break;
@@ -437,7 +462,7 @@ std::string RRToString(const std::vector<byte>& packet,
         ss << " '" << regexp << "'";
         p += len;
 
-        int rc = ares_expand_name(p, packet.data(), packet.size(), &name, &enclen);
+        int rc = ares_expand_name(p, packet.data(), (int)packet.size(), &name, &enclen);
         if (rc != ARES_SUCCESS) {
           ss << "(error from ares_expand_name)";
           break;
@@ -462,15 +487,15 @@ std::string RRToString(const std::vector<byte>& packet,
 }
 
 void PushInt32(std::vector<byte>* data, int value) {
-  data->push_back((value & 0xff000000) >> 24);
-  data->push_back((value & 0x00ff0000) >> 16);
-  data->push_back((value & 0x0000ff00) >> 8);
-  data->push_back(value & 0x000000ff);
+  data->push_back((byte)(((unsigned int)value & 0xff000000) >> 24));
+  data->push_back((byte)(((unsigned int)value & 0x00ff0000) >> 16));
+  data->push_back((byte)(((unsigned int)value & 0x0000ff00) >> 8));
+  data->push_back((byte)(value & 0x000000ff));
 }
 
 void PushInt16(std::vector<byte>* data, int value) {
-  data->push_back((value & 0xff00) >> 8);
-  data->push_back(value & 0x00ff);
+  data->push_back((byte)((value & 0xff00) >> 8));
+  data->push_back((byte)value & 0x00ff);
 }
 
 std::vector<byte> EncodeString(const std::string& name) {
@@ -479,7 +504,11 @@ std::vector<byte> EncodeString(const std::string& name) {
   std::string label;
   // TODO: cope with escapes
   while (std::getline(ss, label, '.')) {
-    data.push_back(label.length());
+    /* Label length of 0 indicates the end, and we always push an end
+     * terminator, so don't do it twice */
+    if (label.length() == 0)
+      break;
+    data.push_back((byte)label.length());
     data.insert(data.end(), label.begin(), label.end());
   }
   data.push_back(0);
@@ -504,7 +533,7 @@ std::vector<byte> DNSRR::data() const {
 std::vector<byte> DNSSingleNameRR::data() const {
   std::vector<byte> data = DNSRR::data();
   std::vector<byte> encname = EncodeString(other_);
-  int len = encname.size();
+  int len = (int)encname.size();
   PushInt16(&data, len);
   data.insert(data.end(), encname.begin(), encname.end());
   return data;
@@ -514,11 +543,11 @@ std::vector<byte> DNSTxtRR::data() const {
   std::vector<byte> data = DNSRR::data();
   int len = 0;
   for (const std::string& txt : txt_) {
-    len += (1 + txt.size());
+    len += (1 + (int)txt.size());
   }
   PushInt16(&data, len);
   for (const std::string& txt : txt_) {
-    data.push_back(txt.size());
+    data.push_back((byte)txt.size());
     data.insert(data.end(), txt.begin(), txt.end());
   }
   return data;
@@ -527,7 +556,7 @@ std::vector<byte> DNSTxtRR::data() const {
 std::vector<byte> DNSMxRR::data() const {
   std::vector<byte> data = DNSRR::data();
   std::vector<byte> encname = EncodeString(other_);
-  int len = 2 + encname.size();
+  int len = 2 + (int)encname.size();
   PushInt16(&data, len);
   PushInt16(&data, pref_);
   data.insert(data.end(), encname.begin(), encname.end());
@@ -537,7 +566,7 @@ std::vector<byte> DNSMxRR::data() const {
 std::vector<byte> DNSSrvRR::data() const {
   std::vector<byte> data = DNSRR::data();
   std::vector<byte> encname = EncodeString(target_);
-  int len = 6 + encname.size();
+  int len = 6 + (int)encname.size();
   PushInt16(&data, len);
   PushInt16(&data, prio_);
   PushInt16(&data, weight_);
@@ -548,7 +577,7 @@ std::vector<byte> DNSSrvRR::data() const {
 
 std::vector<byte> DNSUriRR::data() const {
   std::vector<byte> data = DNSRR::data();
-  int len = 4 + target_.size();
+  int len = 4 + (int)target_.size();
   PushInt16(&data, len);
   PushInt16(&data, prio_);
   PushInt16(&data, weight_);
@@ -558,7 +587,7 @@ std::vector<byte> DNSUriRR::data() const {
 
 std::vector<byte> DNSAddressRR::data() const {
   std::vector<byte> data = DNSRR::data();
-  int len = addr_.size();
+  int len = (int)addr_.size();
   PushInt16(&data, len);
   data.insert(data.end(), addr_.begin(), addr_.end());
   return data;
@@ -568,7 +597,7 @@ std::vector<byte> DNSSoaRR::data() const {
   std::vector<byte> data = DNSRR::data();
   std::vector<byte> encname1 = EncodeString(nsname_);
   std::vector<byte> encname2 = EncodeString(rname_);
-  int len = encname1.size() + encname2.size() + 5*4;
+  int len = (int)encname1.size() + (int)encname2.size() + 5*4;
   PushInt16(&data, len);
   data.insert(data.end(), encname1.begin(), encname1.end());
   data.insert(data.end(), encname2.begin(), encname2.end());
@@ -584,12 +613,12 @@ std::vector<byte> DNSOptRR::data() const {
   std::vector<byte> data = DNSRR::data();
   int len = 0;
   for (const DNSOption& opt : opts_) {
-    len += (4 + opt.data_.size());
+    len += (4 + (int)opt.data_.size());
   }
   PushInt16(&data, len);
   for (const DNSOption& opt : opts_) {
     PushInt16(&data, opt.code_);
-    PushInt16(&data, opt.data_.size());
+    PushInt16(&data, (int)opt.data_.size());
     data.insert(data.end(), opt.data_.begin(), opt.data_.end());
   }
   return data;
@@ -598,15 +627,15 @@ std::vector<byte> DNSOptRR::data() const {
 std::vector<byte> DNSNaptrRR::data() const {
   std::vector<byte> data = DNSRR::data();
   std::vector<byte> encname = EncodeString(replacement_);
-  int len = (4 + 1 + flags_.size() + 1 + service_.size() + 1 + regexp_.size() + encname.size());
+  int len = (4 + 1 + (int)flags_.size() + 1 + (int)service_.size() + 1 + (int)regexp_.size() + (int)encname.size());
   PushInt16(&data, len);
   PushInt16(&data, order_);
   PushInt16(&data, pref_);
-  data.push_back(flags_.size());
+  data.push_back((byte)flags_.size());
   data.insert(data.end(), flags_.begin(), flags_.end());
-  data.push_back(service_.size());
+  data.push_back((byte)service_.size());
   data.insert(data.end(), service_.begin(), service_.end());
-  data.push_back(regexp_.size());
+  data.push_back((byte)regexp_.size());
   data.insert(data.end(), regexp_.begin(), regexp_.end());
   data.insert(data.end(), encname.begin(), encname.end());
   return data;
@@ -630,13 +659,13 @@ std::vector<byte> DNSPacket::data() const {
   b |= (rcode_ & 0x0f);
   data.push_back(b);
 
-  int count = questions_.size();
+  int count = (int)questions_.size();
   PushInt16(&data, count);
-  count = answers_.size();
+  count = (int)answers_.size();
   PushInt16(&data, count);
-  count = auths_.size();
+  count = (int)auths_.size();
   PushInt16(&data, count);
-  count = adds_.size();
+  count = (int)adds_.size();
   PushInt16(&data, count);
 
   for (const std::unique_ptr<DNSQuestion>& question : questions_) {
