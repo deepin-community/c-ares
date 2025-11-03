@@ -1,9 +1,10 @@
 #!/usr/bin/make -f
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow
+export GTEST_FILTER = -*Live*:*.FamilyV4ServiceName/*
 
 %:
 	dh $@
 
 override_dh_auto_configure:
-	dh_auto_configure -- --enable-shared --enable-symbol-hiding --disable-tests
+	dh_auto_configure -- --enable-shared --enable-symbol-hiding --enable-tests
