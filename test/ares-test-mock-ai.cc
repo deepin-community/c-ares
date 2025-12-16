@@ -1,3 +1,28 @@
+/* MIT License
+ *
+ * Copyright (c) The c-ares project and its contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * SPDX-License-Identifier: MIT
+ */
 #include "ares-test-ai.h"
 #include "dns-proto.h"
 
@@ -128,11 +153,10 @@ TEST_P(MockUDPChannelTestAI, TruncationRetry) {
   EXPECT_THAT(result.ai_, IncludesV4Address("1.2.3.4"));
 }
 
-// TCP only to prevent retries
 TEST_P(MockTCPChannelTestAI, MalformedResponse) {
   std::vector<byte> one = {0x01};
-  EXPECT_CALL(server_, OnRequest("www.google.com", T_A))
-    .WillOnce(SetReplyData(&server_, one));
+  ON_CALL(server_, OnRequest("www.google.com", T_A))
+    .WillByDefault(SetReplyData(&server_, one));
 
   AddrInfoResult result;
   struct ares_addrinfo_hints hints = {};
@@ -167,8 +191,8 @@ TEST_P(MockTCPChannelTestAI, ServFailResponse) {
   rsp.set_response().set_aa()
     .add_question(new DNSQuestion("www.google.com", T_A));
   rsp.set_rcode(SERVFAIL);
-  EXPECT_CALL(server_, OnRequest("www.google.com", T_A))
-    .WillOnce(SetReply(&server_, &rsp));
+  ON_CALL(server_, OnRequest("www.google.com", T_A))
+    .WillByDefault(SetReply(&server_, &rsp));
 
   AddrInfoResult result;
   struct ares_addrinfo_hints hints = {};
@@ -177,8 +201,7 @@ TEST_P(MockTCPChannelTestAI, ServFailResponse) {
   ares_getaddrinfo(channel_, "www.google.com.", NULL, &hints, AddrInfoCallback, &result);
   Process();
   EXPECT_TRUE(result.done_);
-  // ARES_FLAG_NOCHECKRESP not set, so SERVFAIL consumed
-  EXPECT_EQ(ARES_ECONNREFUSED, result.status_);
+  EXPECT_EQ(ARES_ESERVFAIL, result.status_);
 }
 
 TEST_P(MockTCPChannelTestAI, NotImplResponse) {
@@ -186,8 +209,8 @@ TEST_P(MockTCPChannelTestAI, NotImplResponse) {
   rsp.set_response().set_aa()
     .add_question(new DNSQuestion("www.google.com", T_A));
   rsp.set_rcode(NOTIMP);
-  EXPECT_CALL(server_, OnRequest("www.google.com", T_A))
-    .WillOnce(SetReply(&server_, &rsp));
+  ON_CALL(server_, OnRequest("www.google.com", T_A))
+    .WillByDefault(SetReply(&server_, &rsp));
 
   AddrInfoResult result;
   struct ares_addrinfo_hints hints = {};
@@ -196,8 +219,7 @@ TEST_P(MockTCPChannelTestAI, NotImplResponse) {
   ares_getaddrinfo(channel_, "www.google.com.", NULL, &hints, AddrInfoCallback, &result);
   Process();
   EXPECT_TRUE(result.done_);
-  // ARES_FLAG_NOCHECKRESP not set, so NOTIMP consumed
-  EXPECT_EQ(ARES_ECONNREFUSED, result.status_);
+  EXPECT_EQ(ARES_ENOTIMP, result.status_);
 }
 
 TEST_P(MockTCPChannelTestAI, RefusedResponse) {
@@ -205,8 +227,8 @@ TEST_P(MockTCPChannelTestAI, RefusedResponse) {
   rsp.set_response().set_aa()
     .add_question(new DNSQuestion("www.google.com", T_A));
   rsp.set_rcode(REFUSED);
-  EXPECT_CALL(server_, OnRequest("www.google.com", T_A))
-    .WillOnce(SetReply(&server_, &rsp));
+  ON_CALL(server_, OnRequest("www.google.com", T_A))
+    .WillByDefault(SetReply(&server_, &rsp));
 
   AddrInfoResult result;
   struct ares_addrinfo_hints hints = {};
@@ -215,8 +237,7 @@ TEST_P(MockTCPChannelTestAI, RefusedResponse) {
   ares_getaddrinfo(channel_, "www.google.com.", NULL, &hints, AddrInfoCallback, &result);
   Process();
   EXPECT_TRUE(result.done_);
-  // ARES_FLAG_NOCHECKRESP not set, so REFUSED consumed
-  EXPECT_EQ(ARES_ECONNREFUSED, result.status_);
+  EXPECT_EQ(ARES_EREFUSED, result.status_);
 }
 
 TEST_P(MockTCPChannelTestAI, YXDomainResponse) {
@@ -429,6 +450,36 @@ TEST_P(MockChannelTestAI, FamilyV6) {
   EXPECT_THAT(result.ai_, IncludesV6Address("2121:0000:0000:0000:0000:0000:0000:0303"));
 }
 
+#ifndef CARES_SYMBOL_HIDING
+// Test case for Issue #662
+TEST_P(MockChannelTestAI, PartialQueryCancel) {
+  std::vector<byte> nothing;
+  DNSPacket reply;
+  reply.set_response().set_aa()
+    .add_question(new DNSQuestion("example.com", T_A))
+    .add_answer(new DNSARR("example.com", 0x0100, {0x01, 0x02, 0x03, 0x04}));
+
+  ON_CALL(server_, OnRequest("example.com", T_A))
+    .WillByDefault(SetReply(&server_, &reply));
+
+  ON_CALL(server_, OnRequest("example.com", T_AAAA))
+    .WillByDefault(SetReplyData(&server_, nothing));
+
+
+  AddrInfoResult result;
+  struct ares_addrinfo_hints hints = {};
+  hints.ai_family = AF_UNSPEC;
+  ares_getaddrinfo(channel_, "example.com.", NULL, &hints,
+                   AddrInfoCallback, &result);
+
+  // After 100ms, issues ares_cancel(), this should be enough time for the A
+  // record reply, but before the timeout on the AAAA record.
+  Process(100);
+  EXPECT_TRUE(result.done_);
+  EXPECT_EQ(ARES_ECANCELLED, result.status_);
+}
+#endif
+
 TEST_P(MockChannelTestAI, FamilyV4) {
   DNSPacket rsp4;
   rsp4.set_response().set_aa()
@@ -620,65 +671,15 @@ class MockMultiServerChannelTestAI
   }
 };
 
-class RotateMultiMockTestAI : public MockMultiServerChannelTestAI {
- public:
-  RotateMultiMockTestAI() : MockMultiServerChannelTestAI(true) {}
-};
-
 class NoRotateMultiMockTestAI : public MockMultiServerChannelTestAI {
  public:
   NoRotateMultiMockTestAI() : MockMultiServerChannelTestAI(false) {}
 };
 
-
-TEST_P(RotateMultiMockTestAI, ThirdServer) {
-  struct ares_options opts = {0};
-  int optmask = 0;
-  EXPECT_EQ(ARES_SUCCESS, ares_save_options(channel_, &opts, &optmask));
-  EXPECT_EQ(0, (optmask & ARES_OPT_NOROTATE));
-  ares_destroy_options(&opts);
-
-  DNSPacket servfailrsp;
-  servfailrsp.set_response().set_aa().set_rcode(SERVFAIL)
-    .add_question(new DNSQuestion("www.example.com", T_A));
-  DNSPacket notimplrsp;
-  notimplrsp.set_response().set_aa().set_rcode(NOTIMP)
-    .add_question(new DNSQuestion("www.example.com", T_A));
-  DNSPacket okrsp;
-  okrsp.set_response().set_aa()
-    .add_question(new DNSQuestion("www.example.com", T_A))
-    .add_answer(new DNSARR("www.example.com", 100, {2,3,4,5}));
-
-  EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[0].get(), &servfailrsp));
-  EXPECT_CALL(*servers_[1], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[1].get(), &notimplrsp));
-  EXPECT_CALL(*servers_[2], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[2].get(), &okrsp));
-  CheckExample();
-
-  // Second time around, starts from server [1].
-  EXPECT_CALL(*servers_[1], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[1].get(), &servfailrsp));
-  EXPECT_CALL(*servers_[2], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[2].get(), &notimplrsp));
-  EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[0].get(), &okrsp));
-  CheckExample();
-
-  // Third time around, starts from server [2].
-  EXPECT_CALL(*servers_[2], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[2].get(), &servfailrsp));
-  EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[0].get(), &notimplrsp));
-  EXPECT_CALL(*servers_[1], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[1].get(), &okrsp));
-  CheckExample();
-}
-
 TEST_P(NoRotateMultiMockTestAI, ThirdServer) {
-  struct ares_options opts = {0};
+  struct ares_options opts;
   int optmask = 0;
+  memset(&opts, 0, sizeof(opts));
   EXPECT_EQ(ARES_SUCCESS, ares_save_options(channel_, &opts, &optmask));
   EXPECT_EQ(ARES_OPT_NOROTATE, (optmask & ARES_OPT_NOROTATE));
   ares_destroy_options(&opts);
@@ -694,7 +695,7 @@ TEST_P(NoRotateMultiMockTestAI, ThirdServer) {
     .add_question(new DNSQuestion("www.example.com", T_A))
     .add_answer(new DNSARR("www.example.com", 100, {2,3,4,5}));
 
-  EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
+   EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
     .WillOnce(SetReply(servers_[0].get(), &servfailrsp));
   EXPECT_CALL(*servers_[1], OnRequest("www.example.com", T_A))
     .WillOnce(SetReply(servers_[1].get(), &notimplrsp));
@@ -702,22 +703,27 @@ TEST_P(NoRotateMultiMockTestAI, ThirdServer) {
     .WillOnce(SetReply(servers_[2].get(), &okrsp));
   CheckExample();
 
-  // Second time around, still starts from server [0].
-  EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[0].get(), &servfailrsp));
-  EXPECT_CALL(*servers_[1], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[1].get(), &notimplrsp));
+  // Second time around, still starts from server [2], as [0] and [1] both
+  // recorded failures
   EXPECT_CALL(*servers_[2], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[2].get(), &okrsp));
+    .WillOnce(SetReply(servers_[2].get(), &servfailrsp));
+  EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
+    .WillOnce(SetReply(servers_[0].get(), &notimplrsp));
+  EXPECT_CALL(*servers_[1], OnRequest("www.example.com", T_A))
+    .WillOnce(SetReply(servers_[1].get(), &okrsp));
   CheckExample();
 
-  // Third time around, still starts from server [0].
-  EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[0].get(), &servfailrsp));
+  // Third time around, server order is [1] (f0), [2] (f1), [0] (f2), which
+  // means [1] will get called twice in a row as after the first call
+  // order will be  [1] (f1), [2] (f1), [0] (f2) since sort order is
+  // (failure count, index)
   EXPECT_CALL(*servers_[1], OnRequest("www.example.com", T_A))
+    .WillOnce(SetReply(servers_[1].get(), &servfailrsp))
     .WillOnce(SetReply(servers_[1].get(), &notimplrsp));
   EXPECT_CALL(*servers_[2], OnRequest("www.example.com", T_A))
-    .WillOnce(SetReply(servers_[2].get(), &okrsp));
+    .WillOnce(SetReply(servers_[2].get(), &notimplrsp));
+  EXPECT_CALL(*servers_[0], OnRequest("www.example.com", T_A))
+    .WillOnce(SetReply(servers_[0].get(), &okrsp));
   CheckExample();
 }
 
@@ -742,31 +748,28 @@ TEST_P(MockChannelTestAI, FamilyV4ServiceName) {
 }
 
 INSTANTIATE_TEST_SUITE_P(AddressFamiliesAI, MockChannelTestAI,
-                       ::testing::ValuesIn(ares::test::families_modes));
+                       ::testing::ValuesIn(ares::test::families_modes), PrintFamilyMode);
 
 INSTANTIATE_TEST_SUITE_P(AddressFamiliesAI, MockUDPChannelTestAI,
-                        ::testing::ValuesIn(ares::test::families));
+                        ::testing::ValuesIn(ares::test::families), PrintFamily);
 
 INSTANTIATE_TEST_SUITE_P(AddressFamiliesAI, MockTCPChannelTestAI,
-                        ::testing::ValuesIn(ares::test::families));
+                        ::testing::ValuesIn(ares::test::families), PrintFamily);
 
 INSTANTIATE_TEST_SUITE_P(AddressFamiliesAI, MockExtraOptsTestAI,
-			::testing::ValuesIn(ares::test::families_modes));
+			::testing::ValuesIn(ares::test::families_modes), PrintFamilyMode);
 
 INSTANTIATE_TEST_SUITE_P(AddressFamiliesAI, MockExtraOptsNDots5TestAI,
-      ::testing::ValuesIn(ares::test::families_modes));
+      ::testing::ValuesIn(ares::test::families_modes), PrintFamilyMode);
 
 INSTANTIATE_TEST_SUITE_P(AddressFamiliesAI, MockNoCheckRespChannelTestAI,
-			::testing::ValuesIn(ares::test::families_modes));
+			::testing::ValuesIn(ares::test::families_modes), PrintFamilyMode);
 
 INSTANTIATE_TEST_SUITE_P(AddressFamiliesAI, MockEDNSChannelTestAI,
-			::testing::ValuesIn(ares::test::families_modes));
-
-INSTANTIATE_TEST_SUITE_P(TransportModesAI, RotateMultiMockTestAI,
-			::testing::ValuesIn(ares::test::families_modes));
+			::testing::ValuesIn(ares::test::families_modes), PrintFamilyMode);
 
 INSTANTIATE_TEST_SUITE_P(TransportModesAI, NoRotateMultiMockTestAI,
-			::testing::ValuesIn(ares::test::families_modes));
+			::testing::ValuesIn(ares::test::families_modes), PrintFamilyMode);
 
 
 }  // namespace test

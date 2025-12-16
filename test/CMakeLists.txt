@@ -1,10 +1,17 @@
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-set(CMAKE_CXX_EXTENSIONS FALSE)
+# Copyright (C) The c-ares project and its contributors
+# SPDX-License-Identifier: MIT
 
-enable_language(CXX)
+# Get rid of: warning C4530: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc
+IF (MSVC)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+ENDIF ()
 
 find_package(Threads)
+find_package(GTest REQUIRED)
+
+IF (NOT TARGET GTest::gmock)
+  Message(FATAL_ERROR "GoogleTest found but the GMock component was not found")
+ENDIF()
 
 # create target to access and use internal cares library
 add_library(caresinternal INTERFACE)
@@ -12,10 +19,10 @@ target_compile_definitions(caresinternal INTERFACE HAVE_CONFIG_H=1)
 
 target_include_directories(caresinternal
    INTERFACE "${PROJECT_BINARY_DIR}"
+             "${PROJECT_BINARY_DIR}/src/lib"
              "${PROJECT_SOURCE_DIR}"
              "${PROJECT_SOURCE_DIR}/src/lib"
-             "${CARES_TOPLEVEL_DIR}/include"
-             "${CMAKE_INSTALL_INCLUDEDIR}"
+             "${PROJECT_SOURCE_DIR}/include"
 )
 
 IF (CARES_STATIC)
@@ -24,26 +31,12 @@ ELSE ()
   target_link_libraries(caresinternal INTERFACE ${PROJECT_NAME}::cares)
 ENDIF ()
 
-# Google Test and Mock
-set(GMOCK_DIR gmock-1.11.0)
-add_library(gmock STATIC
-  ${GMOCK_DIR}/gmock-gtest-all.cc
-  ${GMOCK_DIR}/gmock/gmock.h
-  ${GMOCK_DIR}/gtest/gtest.h
-)
-target_include_directories(gmock PUBLIC SYSTEM ${GMOCK_DIR})
-target_link_libraries(gmock PRIVATE ${CMAKE_THREAD_LIBS_INIT})
-
-# test targets
-
 transform_makefile_inc("Makefile.inc" "${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
 include(${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake)
 
-configure_file(${CARES_TOPLEVEL_DIR}/src/lib/ares_config.h.cmake config.h)
-
 add_executable(arestest ${TESTSOURCES} ${TESTHEADERS})
 target_include_directories(arestest PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(arestest PRIVATE caresinternal gmock)
+target_link_libraries(arestest PRIVATE caresinternal GTest::gmock)
 
 IF (CARES_BUILD_CONTAINER_TESTS)
   target_compile_definitions(arestest PRIVATE HAVE_USER_NAMESPACE HAVE_UTS_NAMESPACE)
