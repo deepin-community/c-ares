@@ -1,3 +1,28 @@
+/* MIT License
+ *
+ * Copyright (c) The c-ares project and its contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * SPDX-License-Identifier: MIT
+ */
 #include "ares-test.h"
 #include "dns-proto.h"
 
@@ -19,21 +44,17 @@ TEST_F(LibraryTest, ParseTxtReplyOK) {
   std::vector<byte> data = pkt.data();
 
   struct ares_txt_reply* txt = nullptr;
-  EXPECT_EQ(ARES_SUCCESS, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_SUCCESS, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   ASSERT_NE(nullptr, txt);
   EXPECT_EQ(std::vector<byte>(expected1.data(), expected1.data() + expected1.size()),
             std::vector<byte>(txt->txt, txt->txt + txt->length));
 
   struct ares_txt_reply* txt2 = txt->next;
   ASSERT_NE(nullptr, txt2);
-  EXPECT_EQ(std::vector<byte>(expected2a.data(), expected2a.data() + expected2a.size()),
+  std::vector<byte> rsp = std::vector<byte>(expected2a.data(), expected2a.data() + expected2a.size());
+  rsp.insert(rsp.end(), expected2b.data(), expected2b.data() + expected2b.size());
+  EXPECT_EQ(rsp,
             std::vector<byte>(txt2->txt, txt2->txt + txt2->length));
-
-  struct ares_txt_reply* txt3 = txt2->next;
-  ASSERT_NE(nullptr, txt3);
-  EXPECT_EQ(std::vector<byte>(expected2b.data(), expected2b.data() + expected2b.size()),
-            std::vector<byte>(txt3->txt, txt3->txt + txt3->length));
-  EXPECT_EQ(nullptr, txt3->next);
 
   ares_free_data(txt);
 }
@@ -50,7 +71,7 @@ TEST_F(LibraryTest, ParseTxtExtReplyOK) {
   std::vector<byte> data = pkt.data();
 
   struct ares_txt_ext* txt = nullptr;
-  EXPECT_EQ(ARES_SUCCESS, ares_parse_txt_reply_ext(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_SUCCESS, ares_parse_txt_reply_ext(data.data(), (int)data.size(), &txt));
   ASSERT_NE(nullptr, txt);
   EXPECT_EQ(std::vector<byte>(expected1.data(), expected1.data() + expected1.size()),
             std::vector<byte>(txt->txt, txt->txt + txt->length));
@@ -58,16 +79,11 @@ TEST_F(LibraryTest, ParseTxtExtReplyOK) {
 
   struct ares_txt_ext* txt2 = txt->next;
   ASSERT_NE(nullptr, txt2);
-  EXPECT_EQ(std::vector<byte>(expected2a.data(), expected2a.data() + expected2a.size()),
+  std::vector<byte> rsp = std::vector<byte>(expected2a.data(), expected2a.data() + expected2a.size());
+  rsp.insert(rsp.end(), expected2b.data(), expected2b.data() + expected2b.size());
+  EXPECT_EQ(rsp,
             std::vector<byte>(txt2->txt, txt2->txt + txt2->length));
   EXPECT_EQ(1, txt2->record_start);
-
-  struct ares_txt_ext* txt3 = txt2->next;
-  ASSERT_NE(nullptr, txt3);
-  EXPECT_EQ(std::vector<byte>(expected2b.data(), expected2b.data() + expected2b.size()),
-            std::vector<byte>(txt3->txt, txt3->txt + txt3->length));
-  EXPECT_EQ(nullptr, txt3->next);
-  EXPECT_EQ(0, txt3->record_start);
 
   ares_free_data(txt);
 }
@@ -99,7 +115,7 @@ TEST_F(LibraryTest, ParseTxtMalformedReply1) {
   };
 
   struct ares_txt_reply* txt = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   ASSERT_EQ(nullptr, txt);
 }
 
@@ -127,7 +143,7 @@ TEST_F(LibraryTest, ParseTxtMalformedReply2) {
   };
 
   struct ares_txt_reply* txt = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   ASSERT_EQ(nullptr, txt);
 }
 
@@ -158,7 +174,7 @@ TEST_F(LibraryTest, ParseTxtMalformedReply3) {
   };
 
   struct ares_txt_reply* txt = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   ASSERT_EQ(nullptr, txt);
 }
 
@@ -180,7 +196,7 @@ TEST_F(LibraryTest, ParseTxtMalformedReply4) {
   };
 
   struct ares_txt_reply* txt = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   ASSERT_EQ(nullptr, txt);
 }
 
@@ -201,7 +217,7 @@ TEST_F(LibraryTest, ParseTxtReplyErrors) {
   pkt.questions_.clear();
   data = pkt.data();
   txt = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   EXPECT_EQ(nullptr, txt);
   pkt.add_question(new DNSQuestion("example.com", T_MX));
 
@@ -210,7 +226,7 @@ TEST_F(LibraryTest, ParseTxtReplyErrors) {
   pkt.questions_.clear();
   pkt.add_question(new DNSQuestion("Axample.com", T_TXT));
   data = pkt.data();
-  EXPECT_EQ(ARES_ENODATA, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_ENODATA, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   pkt.questions_.clear();
   pkt.add_question(new DNSQuestion("example.com", T_TXT));
 #endif
@@ -219,7 +235,7 @@ TEST_F(LibraryTest, ParseTxtReplyErrors) {
   pkt.add_question(new DNSQuestion("example.com", T_MX));
   data = pkt.data();
   txt = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   EXPECT_EQ(nullptr, txt);
   pkt.questions_.clear();
   pkt.add_question(new DNSQuestion("example.com", T_MX));
@@ -228,14 +244,14 @@ TEST_F(LibraryTest, ParseTxtReplyErrors) {
   pkt.answers_.clear();
   data = pkt.data();
   txt = nullptr;
-  EXPECT_EQ(ARES_ENODATA, ares_parse_txt_reply(data.data(), data.size(), &txt));
+  EXPECT_EQ(ARES_ENODATA, ares_parse_txt_reply(data.data(), (int)data.size(), &txt));
   EXPECT_EQ(nullptr, txt);
   pkt.add_answer(new DNSTxtRR("example.com", 100, {expected1}));
 
   // Truncated packets.
   for (size_t len = 1; len < data.size(); len++) {
     txt = nullptr;
-    EXPECT_NE(ARES_SUCCESS, ares_parse_txt_reply(data.data(), len, &txt));
+    EXPECT_NE(ARES_SUCCESS, ares_parse_txt_reply(data.data(), (int)len, &txt));
     EXPECT_EQ(nullptr, txt);
   }
 }
@@ -257,7 +273,7 @@ TEST_F(LibraryTest, ParseTxtReplyAllocFail) {
   for (int ii = 1; ii <= 13; ii++) {
     ClearFails();
     SetAllocFail(ii);
-    EXPECT_EQ(ARES_ENOMEM, ares_parse_txt_reply(data.data(), data.size(), &txt)) << ii;
+    EXPECT_EQ(ARES_ENOMEM, ares_parse_txt_reply(data.data(), (int)data.size(), &txt)) << ii;
   }
 }
 

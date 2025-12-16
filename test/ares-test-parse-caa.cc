@@ -1,3 +1,28 @@
+/* MIT License
+ *
+ * Copyright (c) The c-ares project and its contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * SPDX-License-Identifier: MIT
+ */
 #include "ares-test.h"
 #include "dns-proto.h"
 
@@ -24,7 +49,7 @@ TEST_F(LibraryTest, ParseCaaReplyMultipleOK) {
   };
 
   struct ares_caa_reply* caa = nullptr;
-  EXPECT_EQ(ARES_SUCCESS, ares_parse_caa_reply(data.data(), data.size(), &caa));
+  EXPECT_EQ(ARES_SUCCESS, ares_parse_caa_reply(data.data(), (int)data.size(), &caa));
   ASSERT_NE(nullptr, caa);
   ASSERT_NE(nullptr, caa->next);
   ASSERT_NE(nullptr, caa->next->next);
@@ -42,13 +67,13 @@ TEST_F(LibraryTest, ParseCaaReplySingleOK) {
   };
 
   struct ares_caa_reply* caa = nullptr;
-  EXPECT_EQ(ARES_SUCCESS, ares_parse_caa_reply(data.data(), data.size(), &caa));
+  EXPECT_EQ(ARES_SUCCESS, ares_parse_caa_reply(data.data(), (int)data.size(), &caa));
   ASSERT_NE(nullptr, caa);
 
-  EXPECT_EQ(caa->critical, 0);
-  EXPECT_EQ(caa->plength, 5);
+  EXPECT_EQ(caa->critical, (int)0);
+  EXPECT_EQ(caa->plength, (size_t)5);
   EXPECT_STREQ((char *)caa->property, "issue");
-  EXPECT_EQ(caa->length, 8);
+  EXPECT_EQ(caa->length, (size_t)8);
   EXPECT_STREQ((char *)caa->value, "pki.goog");
 
   ares_free_data(caa);
@@ -63,7 +88,7 @@ TEST_F(LibraryTest, ParseCaaBogusReply1) {
   };
 
   struct ares_caa_reply* caa = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_caa_reply(data.data(), data.size(), &caa));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_caa_reply(data.data(), (int)data.size(), &caa));
   ASSERT_EQ(nullptr, caa);
 }
 
@@ -76,7 +101,7 @@ TEST_F(LibraryTest, ParseCaaBogusReply2) {
   };
 
   struct ares_caa_reply* caa = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_caa_reply(data.data(), data.size(), &caa));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_caa_reply(data.data(), (int)data.size(), &caa));
   ASSERT_EQ(nullptr, caa);
 }
 
@@ -89,7 +114,7 @@ TEST_F(LibraryTest, ParseCaaBogusReply3) {
   };
 
   struct ares_caa_reply* caa = nullptr;
-  EXPECT_EQ(ARES_EBADRESP, ares_parse_caa_reply(data.data(), data.size(), &caa));
+  EXPECT_EQ(ARES_EBADRESP, ares_parse_caa_reply(data.data(), (int)data.size(), &caa));
   ASSERT_EQ(nullptr, caa);
 }
 
@@ -105,7 +130,7 @@ TEST_F(LibraryTest, ParseCaaEmptyReply) {
   };
 
   struct ares_caa_reply* caa = nullptr;
-  EXPECT_EQ(ARES_ENODATA, ares_parse_caa_reply(data.data(), data.size(), &caa));
+  EXPECT_EQ(ARES_ENODATA, ares_parse_caa_reply(data.data(), (int)data.size(), &caa));
   ASSERT_EQ(nullptr, caa);
 }
 
