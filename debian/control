@@ -32,9 +32,6 @@ Description: asynchronous name resolver - development files
  This package contains development files (headers and static libraries).
 
 Package: libcares2
-X-Time64-Compat: libc-ares2
-Provides: ${t64:Provides}
-Breaks: libc-ares2 (<< ${source:Version})
 Architecture: any
 Replaces: libc-ares2, libc-ares1
 Depends: ${shlibs:Depends}, ${misc:Depends}
