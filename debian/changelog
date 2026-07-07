@@ -1,8 +1,12 @@
-c-ares (1.34.6-1deepin1) unstable; urgency=medium
+c-ares (1.34.7-1) unstable; urgency=high
 
-  * Revert 64-bit time_t changes.
+  [ Gregor Jasny ]
+  * Imported Upstream version 1.34.7 (fixes CVE-2026-33630)
 
- -- tunaichao <tunaichao@uniontech.com>  Thu, 12 Mar 2026 16:49:59 +0800
+  [ Bastian Germann ]
+  * Prevent googletest installation for nocheck
+
+ -- Gregor Jasny <gjasny@googlemail.com>  Mon, 06 Jul 2026 21:40:21 +0200
 
 c-ares (1.34.6-1) unstable; urgency=high
 
