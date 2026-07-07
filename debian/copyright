@@ -1,4 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: c-ares
+Upstream-Contact: c-ares@lists.haxx.se
 
 Files: *
 Copyright: 2023, 2024, The c-ares project and its contributors.
