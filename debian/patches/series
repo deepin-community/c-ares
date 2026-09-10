@@ -1,3 +1,4 @@
 use-debian-googletest.diff
 remove-shields-from-markdown.diff
 CVE-2026-33630.patch
+CVE-2026-69184.patch
