@@ -1,4 +1,4 @@
-c-ares (1.34.6-1deepin3) unstable; urgency=medium
+c-ares (1.34.6-1deepin4) unstable; urgency=medium
 
   * fix(cve): CVE-2026-69184 (unknown) - [PATCH] enforce 255 octet name
     limit when parsing dns names (#1164)   Upstream:
